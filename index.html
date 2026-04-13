@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交通費記録アプリ</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --primary-dark: #1d4ed8;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+  /* Header */
+  .header {
+    background: var(--primary); color: #fff; padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+  }
+  .header h1 { font-size: 1.3rem; font-weight: 600; }
+  .header-actions { display: flex; gap: 8px; }
+  .header-actions button {
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; transition: background 0.2s;
+  }
+  .header-actions button:hover { background: rgba(255,255,255,0.3); }
+
+  /* Tabs */
+  .tabs {
+    display: flex; background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 12px 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+    color: var(--text-light); border-bottom: 3px solid transparent; transition: all 0.2s;
+  }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab:hover { color: var(--primary); }
+
+  /* Container */
+  .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Card */
+  .card {
+    background: var(--card); border-radius: 12px; padding: 20px;
+    box-shadow: var(--shadow); margin-bottom: 16px; border: 1px solid var(--border);
+  }
+  .card h2 {
+    font-size: 1.05rem; margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border); color: var(--text);
+  }
+  .card h3 { font-size: 0.95rem; margin-bottom: 10px; color: var(--primary); }
+
+  /* Date picker */
+  .date-section { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .date-section input[type="date"] {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 1rem; color: var(--text);
+  }
+  .date-nav { display: flex; gap: 4px; }
+  .date-nav button {
+    padding: 6px 12px; border: 1px solid var(--border); background: var(--card);
+    border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+  }
+  .date-nav button:hover { background: var(--primary-light); }
+
+  /* Checkbox group */
+  .transport-group { margin-bottom: 16px; }
+  .transport-group label {
+    display: flex; align-items: center; padding: 10px 14px; margin-bottom: 6px;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    transition: all 0.15s; font-size: 0.9rem;
+  }
+  .transport-group label:hover { background: var(--primary-light); border-color: var(--primary); }
+  .transport-group label.checked { background: var(--primary-light); border-color: var(--primary); }
+  .transport-group input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; accent-color: var(--primary); }
+  .transport-name { flex: 1; }
+  .transport-price { font-weight: 600; color: var(--primary); }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 0.9rem; font-weight: 600; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-outline {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+  }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+  .btn-group { display: flex; gap: 8px; margin-top: 16px; }
+
+  /* Summary table */
+  .summary-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .summary-controls select, .summary-controls input {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;
+  }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.85rem;
+  }
+  th, td {
+    padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border);
+  }
+  th { background: var(--bg); font-weight: 600; color: var(--text-light); font-size: 0.8rem; }
+  td.amount { text-align: right; font-weight: 600; }
+  tr.total-row { background: var(--primary-light); font-weight: 700; }
+  tr.total-row td { border-top: 2px solid var(--primary); }
+
+  /* Settings */
+  .setting-item {
+    display: flex; align-items: center; gap: 8px; padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-item:last-child { border-bottom: none; }
+  .setting-item .name { flex: 1; font-size: 0.9rem; }
+  .setting-item .price { font-weight: 600; color: var(--primary); min-width: 80px; text-align: right; }
+  .add-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .add-form input, .add-form select {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;
+  }
+  .add-form input[type="text"] { flex: 1; min-width: 120px; }
+  .add-form input[type="number"] { width: 100px; }
+
+  /* History */
+  .history-item {
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-date { font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+  .history-detail { font-size: 0.85rem; color: var(--text-light); }
+  .history-detail span { margin-right: 16px; }
+  .history-amount { color: var(--primary); font-weight: 600; }
+  .history-actions { margin-top: 6px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+    background: #1e293b; color: #fff; border-radius: 8px; font-size: 0.9rem;
+    opacity: 0; transform: translateY(20px); transition: all 0.3s;
+    z-index: 1000;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4); z-index: 999; display: none;
+    justify-content: center; align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 16px; padding: 24px;
+    max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h2 { margin-bottom: 16px; }
+  .modal .form-group { margin-bottom: 12px; }
+  .modal label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-light); }
+  .modal input, .modal select {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 0.9rem;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .badge-go { background: #dbeafe; color: #2563eb; }
+  .badge-return { background: #fef3c7; color: #d97706; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 1.1rem; }
+    .container { padding: 12px; }
+    .card { padding: 16px; }
+    .summary-controls { flex-direction: column; }
+  }
+
+  /* Spreadsheet connection */
+  .connection-status {
+    display: flex; align-items: center; gap: 8px; font-size: 0.85rem;
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;
+  }
+  .connection-status.connected { background: #dcfce7; color: #166534; }
+  .connection-status.disconnected { background: #fef2f2; color: #991b1b; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .status-dot.on { background: #16a34a; }
+  .status-dot.off { background: #dc2626; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚃 交通費記録</h1>
+  <div class="header-actions">
+    <button onclick="syncToSheet()" title="スプレッドシートに同期">📤 同期</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('record')">📝 記録</div>
+  <div class="tab" onclick="switchTab('history')">📋 履歴</div>
+  <div class="tab" onclick="switchTab('summary')">📊 集計</div>
+  <div class="tab" onclick="switchTab('settings')">⚙️ 設定</div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 記録パネル ===== -->
+  <div id="panel-record" class="panel active">
+    <div class="card">
+      <h2>日付を選択</h2>
+      <div class="date-section">
+        <input type="date" id="selectedDate" onchange="loadDateRecord()">
+        <div class="date-nav">
+          <button onclick="moveDate(-1)">◀ 前日</button>
+          <button onclick="setToday()">今日</button>
+          <button onclick="moveDate(1)">翌日 ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚶 行き</h2>
+      <div class="transport-group" id="go-options"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏠 帰り</h2>
+      <div class="transport-group" id="return-options"></div>
+    </div>
+
+    <div class="card" id="daily-summary-card" style="display:none">
+      <h2>📌 この日の合計</h2>
+      <div id="daily-summary"></div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveRecord()">💾 保存</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteRecord()">🗑 この日を削除</button>
+    </div>
+  </div>
+
+  <!-- ===== 履歴パネル ===== -->
+  <div id="panel-history" class="panel">
+    <div class="card">
+      <h2>記録履歴</h2>
+      <div class="summary-controls">
+        <input type="month" id="historyMonth" onchange="renderHistory()">
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== 集計パネル ===== -->
+  <div id="panel-summary" class="panel">
+    <div class="card">
+      <h2>集計</h2>
+      <div class="summary-controls">
+        <select id="summaryType" onchange="renderSummary()">
+          <option value="weekly">週間集計</option>
+          <option value="monthly">月間集計</option>
+        </select>
+        <input type="month" id="summaryMonth" onchange="renderSummary()">
+      </div>
+      <div id="summary-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>交通手段別 内訳</h2>
+      <div id="breakdown-table"></div>
+    </div>
+  </div>
+
+  <!-- ===== 設定パネル ===== -->
+  <div id="panel-settings" class="panel">
+    <div class="card">
+      <h2>スプレッドシート連携</h2>
+      <div id="connection-info"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label style="font-size:0.85rem;color:var(--text-light);margin-bottom:4px;display:block;">
+          Google Apps Script URL
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxx/exec"
+            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;">
+          <button class="btn btn-primary btn-sm" onclick="saveGasUrl()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚶 行きの交通手段</h2>
+      <div id="settings-go-list"></div>
+      <div class="add-form">
+        <select id="add-go-category"></select>
+        <input type="text" id="add-go-name" placeholder="名称（例：バス）">
+        <input type="number" id="add-go-price" placeholder="金額">
+        <button class="btn btn-success btn-sm" onclick="addTransport('go')">＋追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏠 帰りの交通手段</h2>
+      <div id="settings-return-list"></div>
+      <div class="add-form">
+        <select id="add-return-category"></select>
+        <input type="text" id="add-return-name" placeholder="名称（例：タクシー）">
+        <input type="number" id="add-return-price" placeholder="金額">
+        <button class="btn btn-success btn-sm" onclick="addTransport('return')">＋追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>データ管理</h2>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="exportData()">📥 データエクスポート (JSON)</button>
+        <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📤 データインポート</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== データ管理 ====================
+const STORAGE_KEY = 'transportApp';
+
+function getAppData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    // 既存データにcategoryがなければ付与
+    migrateCategories(parsed);
+    return parsed;
+  }
+  return {
+    categories: ['JR', 'ラベンダー号', '旭川電気軌道', '車送迎'],
+    transports: {
+      go: [
+        { id: 'g1', name: 'JR千代ヶ岡～美瑛', price: 320, category: 'JR' },
+        { id: 'g2', name: '車送迎(亜紀)', price: 360, category: '車送迎' },
+        { id: 'g3', name: '車送迎(カタ)', price: 190, category: '車送迎' },
+      ],
+      return: [
+        { id: 'r1', name: 'JR美瑛～旭川駅', price: 680, category: 'JR' },
+        { id: 'r2', name: 'JR美瑛～緑が丘駅', price: 470, category: 'JR' },
+        { id: 'r3', name: '旭川電気軌道 旭川駅～東川', price: 546, category: '旭川電気軌道' },
+        { id: 'r4', name: 'ラベンダー号 美瑛～旭川空港', price: 380, category: 'ラベンダー号' },
+        { id: 'r5', name: '旭川電気軌道 旭川空港～東川', price: 315, category: '旭川電気軌道' },
+      ]
+    },
+    records: {},
+    gasUrl: ''
+  };
+}
+
+// 既存データにcategoryフィールドがない場合に自動付与
+function migrateCategories(data) {
+  if (!data.categories) {
+    data.categories = ['JR', 'ラベンダー号', '旭川電気軌道', '車送迎'];
+  }
+  const autoDetect = (name) => {
+    if (name.startsWith('JR')) return 'JR';
+    if (name.includes('ラベンダー')) return 'ラベンダー号';
+    if (name.includes('旭川電気軌道')) return '旭川電気軌道';
+    if (name.includes('車送迎')) return '車送迎';
+    return 'その他';
+  };
+  ['go', 'return'].forEach(dir => {
+    (data.transports[dir] || []).forEach(t => {
+      if (!t.category) t.category = autoDetect(t.name);
+    });
+  });
+}
+
+function saveAppData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ==================== タブ切替 ====================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+
+  if (name === 'history') renderHistory();
+  if (name === 'summary') renderSummary();
+  if (name === 'settings') renderSettings();
+}
+
+// ==================== 日付操作 ====================
+function setToday() {
+  document.getElementById('selectedDate').value = todayStr();
+  loadDateRecord();
+}
+
+function moveDate(delta) {
+  const input = document.getElementById('selectedDate');
+  const d = new Date(input.value || todayStr());
+  d.setDate(d.getDate() + delta);
+  input.value = formatDate(d);
+  loadDateRecord();
+}
+
+function todayStr() {
+  return formatDate(new Date());
+}
+
+function formatDate(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+
+function formatDateJP(dateStr) {
+  const d = new Date(dateStr);
+  const days = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
+}
+
+// ==================== 記録パネル ====================
+function renderTransportOptions() {
+  const data = getAppData();
+  renderGroup('go-options', data.transports.go, 'go');
+  renderGroup('return-options', data.transports.return, 'return');
+}
+
+function renderGroup(containerId, items, direction) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map(item => `
+    <label id="label-${direction}-${item.id}" onclick="toggleLabel(this)">
+      <input type="checkbox" value="${item.id}" data-direction="${direction}"
+        data-price="${item.price}" data-name="${item.name}">
+      <span class="transport-name">${item.name}</span>
+      <span class="transport-price">¥${item.price.toLocaleString()}</span>
+    </label>
+  `).join('');
+}
+
+function toggleLabel(label) {
+  setTimeout(() => {
+    const cb = label.querySelector('input[type="checkbox"]');
+    label.classList.toggle('checked', cb.checked);
+    updateDailySummary();
+  }, 10);
+}
+
+function updateDailySummary() {
+  const checked = document.querySelectorAll('.transport-group input[type="checkbox"]:checked');
+  if (checked.length === 0) {
+    document.getElementById('daily-summary-card').style.display = 'none';
+    return;
+  }
+  document.getElementById('daily-summary-card').style.display = 'block';
+  let goTotal = 0, returnTotal = 0;
+  let details = [];
+  checked.forEach(cb => {
+    const price = parseInt(cb.dataset.price);
+    const dir = cb.dataset.direction;
+    if (dir === 'go') goTotal += price;
+    else returnTotal += price;
+    details.push(`${dir === 'go' ? '行き' : '帰り'}: ${cb.dataset.name} ¥${price.toLocaleString()}`);
+  });
+  const total = goTotal + returnTotal;
+  document.getElementById('daily-summary').innerHTML = `
+    <div style="font-size:0.9rem;margin-bottom:8px">${details.join('<br>')}</div>
+    <div style="display:flex;gap:16px;font-weight:600;font-size:0.95rem;">
+      <span>行き: ¥${goTotal.toLocaleString()}</span>
+      <span>帰り: ¥${returnTotal.toLocaleString()}</span>
+      <span style="color:var(--primary);font-size:1.1rem;">合計: ¥${total.toLocaleString()}</span>
+    </div>
+  `;
+}
+
+function loadDateRecord() {
+  const date = document.getElementById('selectedDate').value;
+  if (!date) return;
+  const data = getAppData();
+  const record = data.records[date];
+
+  // Reset all checkboxes
+  document.querySelectorAll('.transport-group input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    cb.closest('label').classList.remove('checked');
+  });
+
+  if (record) {
+    (record.go || []).forEach(id => {
+      const cb = document.querySelector(`input[value="${id}"][data-direction="go"]`);
+      if (cb) { cb.checked = true; cb.closest('label').classList.add('checked'); }
+    });
+    (record.return || []).forEach(id => {
+      const cb = document.querySelector(`input[value="${id}"][data-direction="return"]`);
+      if (cb) { cb.checked = true; cb.closest('label').classList.add('checked'); }
+    });
+  }
+  updateDailySummary();
+}
+
+function saveRecord() {
+  const date = document.getElementById('selectedDate').value;
+  if (!date) { showToast('日付を選択してください'); return; }
+
+  const data = getAppData();
+  const goChecked = [];
+  const returnChecked = [];
+
+  document.querySelectorAll('#go-options input:checked').forEach(cb => goChecked.push(cb.value));
+  document.querySelectorAll('#return-options input:checked').forEach(cb => returnChecked.push(cb.value));
+
+  if (goChecked.length === 0 && returnChecked.length === 0) {
+    showToast('交通手段を選択してください');
+    return;
+  }
+
+  data.records[date] = { go: goChecked, return: returnChecked };
+  saveAppData(data);
+  showToast('✅ 保存しました');
+  autoSync();
+}
+
+function deleteRecord() {
+  const date = document.getElementById('selectedDate').value;
+  if (!date) return;
+  if (!confirm(`${formatDateJP(date)} の記録を削除しますか？`)) return;
+  const data = getAppData();
+  delete data.records[date];
+  saveAppData(data);
+  loadDateRecord();
+  showToast('🗑 削除しました');
+  autoSync();
+}
+
+// ==================== 履歴パネル ====================
+function renderHistory() {
+  const monthInput = document.getElementById('historyMonth');
+  if (!monthInput.value) {
+    const now = new Date();
+    monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  const [year, month] = monthInput.value.split('-').map(Number);
+  const data = getAppData();
+  const dates = Object.keys(data.records)
+    .filter(d => { const dt = new Date(d); return dt.getFullYear() === year && dt.getMonth()+1 === month; })
+    .sort();
+
+  if (dates.length === 0) {
+    document.getElementById('history-list').innerHTML = '<p style="color:var(--text-light);padding:16px 0;">この月の記録はありません。</p>';
+    return;
+  }
+
+  let html = '';
+  let monthTotal = 0;
+  dates.forEach(date => {
+    const record = data.records[date];
+    let dayTotal = 0;
+    let goDetail = [], returnDetail = [];
+
+    (record.go || []).forEach(id => {
+      const t = data.transports.go.find(x => x.id === id);
+      if (t) { goDetail.push(t); dayTotal += t.price; }
+    });
+    (record.return || []).forEach(id => {
+      const t = data.transports.return.find(x => x.id === id);
+      if (t) { returnDetail.push(t); dayTotal += t.price; }
+    });
+    monthTotal += dayTotal;
+
+    html += `<div class="history-item">
+      <div class="history-date">${formatDateJP(date)}</div>
+      <div class="history-detail">
+        ${goDetail.map(t => `<span class="badge badge-go">行き</span> ${t.name} ¥${t.price.toLocaleString()}`).join('<br>')}
+        ${goDetail.length && returnDetail.length ? '<br>' : ''}
+        ${returnDetail.map(t => `<span class="badge badge-return">帰り</span> ${t.name} ¥${t.price.toLocaleString()}`).join('<br>')}
+      </div>
+      <div style="text-align:right;margin-top:4px;">
+        <span class="history-amount">¥${dayTotal.toLocaleString()}</span>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="text-align:right;padding:16px 0;font-size:1.1rem;font-weight:700;color:var(--primary);">
+    月合計: ¥${monthTotal.toLocaleString()} （${dates.length}日分）
+  </div>`;
+
+  document.getElementById('history-list').innerHTML = html;
+}
+
+// ==================== 集計パネル ====================
+function renderSummary() {
+  const type = document.getElementById('summaryType').value;
+  const monthInput = document.getElementById('summaryMonth');
+  if (!monthInput.value) {
+    const now = new Date();
+    monthInput.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  const [year, month] = monthInput.value.split('-').map(Number);
+  const data = getAppData();
+
+  if (type === 'monthly') {
+    renderMonthlySummary(data, year, month);
+  } else {
+    renderWeeklySummary(data, year, month);
+  }
+  renderBreakdown(data, year, month);
+}
+
+function renderMonthlySummary(data, year, month) {
+  const dates = Object.keys(data.records)
+    .filter(d => { const dt = new Date(d); return dt.getFullYear() === year && dt.getMonth()+1 === month; })
+    .sort();
+
+  let goTotal = 0, returnTotal = 0;
+  const transportTotals = {};
+
+  dates.forEach(date => {
+    const record = data.records[date];
+    (record.go || []).forEach(id => {
+      const t = data.transports.go.find(x => x.id === id);
+      if (t) {
+        goTotal += t.price;
+        transportTotals[t.name] = (transportTotals[t.name] || 0) + t.price;
+      }
+    });
+    (record.return || []).forEach(id => {
+      const t = data.transports.return.find(x => x.id === id);
+      if (t) {
+        returnTotal += t.price;
+        transportTotals[t.name] = (transportTotals[t.name] || 0) + t.price;
+      }
+    });
+  });
+
+  let html = `<table>
+    <tr><th>項目</th><th style="text-align:right">金額</th></tr>
+    <tr><td>行き 合計</td><td class="amount">¥${goTotal.toLocaleString()}</td></tr>
+    <tr><td>帰り 合計</td><td class="amount">¥${returnTotal.toLocaleString()}</td></tr>
+    <tr class="total-row"><td>総合計（${dates.length}日分）</td><td class="amount">¥${(goTotal+returnTotal).toLocaleString()}</td></tr>
+  </table>`;
+
+  document.getElementById('summary-table').innerHTML = html;
+}
+
+function renderWeeklySummary(data, year, month) {
+  // Get all dates in this month grouped by week
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const weeks = [];
+  let currentWeek = [];
+  let d = new Date(firstDay);
+
+  // Start from Monday of the first week
+  while (d <= lastDay) {
+    currentWeek.push(formatDate(new Date(d)));
+    if (d.getDay() === 0 || d >= lastDay) {
+      weeks.push([...currentWeek]);
+      currentWeek = [];
+    }
+    d.setDate(d.getDate() + 1);
+  }
+
+  let html = '<table><tr><th>週</th><th>期間</th><th>日数</th><th style="text-align:right">行き</th><th style="text-align:right">帰り</th><th style="text-align:right">合計</th></tr>';
+  let grandGo = 0, grandReturn = 0, grandDays = 0;
+
+  weeks.forEach((week, i) => {
+    let goTotal = 0, returnTotal = 0, dayCount = 0;
+    week.forEach(date => {
+      const record = data.records[date];
+      if (record) {
+        dayCount++;
+        (record.go || []).forEach(id => {
+          const t = data.transports.go.find(x => x.id === id);
+          if (t) goTotal += t.price;
+        });
+        (record.return || []).forEach(id => {
+          const t = data.transports.return.find(x => x.id === id);
+          if (t) returnTotal += t.price;
+        });
+      }
+    });
+    grandGo += goTotal; grandReturn += returnTotal; grandDays += dayCount;
+    const from = formatDateJP(week[0]);
+    const to = formatDateJP(week[week.length - 1]);
+    html += `<tr>
+      <td>第${i+1}週</td><td>${from}～${to}</td><td>${dayCount}日</td>
+      <td class="amount">¥${goTotal.toLocaleString()}</td>
+      <td class="amount">¥${returnTotal.toLocaleString()}</td>
+      <td class="amount">¥${(goTotal+returnTotal).toLocaleString()}</td>
+    </tr>`;
+  });
+
+  html += `<tr class="total-row">
+    <td colspan="2">月合計</td><td>${grandDays}日</td>
+    <td class="amount">¥${grandGo.toLocaleString()}</td>
+    <td class="amount">¥${grandReturn.toLocaleString()}</td>
+    <td class="amount">¥${(grandGo+grandReturn).toLocaleString()}</td>
+  </tr></table>`;
+
+  document.getElementById('summary-table').innerHTML = html;
+}
+
+function renderBreakdown(data, year, month) {
+  const dates = Object.keys(data.records)
+    .filter(d => { const dt = new Date(d); return dt.getFullYear() === year && dt.getMonth()+1 === month; });
+
+  // 個別の交通手段ごと
+  const breakdown = {};
+  // カテゴリ別集計
+  const categoryTotals = {};
+
+  dates.forEach(date => {
+    const record = data.records[date];
+    (record.go || []).forEach(id => {
+      const t = data.transports.go.find(x => x.id === id);
+      if (t) {
+        const cat = t.category || 'その他';
+        if (!breakdown[t.name]) breakdown[t.name] = { count: 0, total: 0, price: t.price, dir: '行き', category: cat };
+        breakdown[t.name].count++;
+        breakdown[t.name].total += t.price;
+        if (!categoryTotals[cat]) categoryTotals[cat] = { count: 0, total: 0 };
+        categoryTotals[cat].count++;
+        categoryTotals[cat].total += t.price;
+      }
+    });
+    (record.return || []).forEach(id => {
+      const t = data.transports.return.find(x => x.id === id);
+      if (t) {
+        const cat = t.category || 'その他';
+        if (!breakdown[t.name]) breakdown[t.name] = { count: 0, total: 0, price: t.price, dir: '帰り', category: cat };
+        breakdown[t.name].count++;
+        breakdown[t.name].total += t.price;
+        if (!categoryTotals[cat]) categoryTotals[cat] = { count: 0, total: 0 };
+        categoryTotals[cat].count++;
+        categoryTotals[cat].total += t.price;
+      }
+    });
+  });
+
+  const grandTotal = Object.values(categoryTotals).reduce((s, v) => s + v.total, 0);
+
+  // カテゴリ別集計テーブル
+  const catEntries = Object.entries(categoryTotals).sort((a, b) => b[1].total - a[1].total);
+  let html = '<h3 style="margin-bottom:10px;">カテゴリ別集計</h3>';
+  html += '<table><tr><th>カテゴリ</th><th>回数</th><th style="text-align:right">小計</th><th style="text-align:right">割合</th></tr>';
+  catEntries.forEach(([cat, info]) => {
+    const pct = grandTotal ? Math.round(info.total / grandTotal * 100) : 0;
+    html += `<tr>
+      <td><strong>${cat}</strong></td>
+      <td>${info.count}回</td>
+      <td class="amount">¥${info.total.toLocaleString()}</td>
+      <td class="amount">${pct}%</td>
+    </tr>`;
+  });
+  html += `<tr class="total-row"><td>合計</td><td></td><td class="amount">¥${grandTotal.toLocaleString()}</td><td></td></tr></table>`;
+
+  // 明細テーブル（カテゴリでグループ化）
+  html += '<h3 style="margin-top:20px;margin-bottom:10px;">明細</h3>';
+  html += '<table><tr><th>カテゴリ</th><th>区分</th><th>交通手段</th><th>単価</th><th>回数</th><th style="text-align:right">小計</th></tr>';
+  const entries = Object.entries(breakdown).sort((a, b) => {
+    const catCmp = (a[1].category || '').localeCompare(b[1].category || '');
+    return catCmp !== 0 ? catCmp : b[1].total - a[1].total;
+  });
+  entries.forEach(([name, info]) => {
+    html += `<tr>
+      <td>${info.category}</td>
+      <td><span class="badge ${info.dir === '行き' ? 'badge-go' : 'badge-return'}">${info.dir}</span></td>
+      <td>${name}</td>
+      <td>¥${info.price.toLocaleString()}</td>
+      <td>${info.count}回</td>
+      <td class="amount">¥${info.total.toLocaleString()}</td>
+    </tr>`;
+  });
+  html += `<tr class="total-row"><td colspan="5">合計</td><td class="amount">¥${grandTotal.toLocaleString()}</td></tr></table>`;
+
+  document.getElementById('breakdown-table').innerHTML = html;
+}
+
+// ==================== 設定パネル ====================
+function renderSettings() {
+  const data = getAppData();
+  renderSettingsList('settings-go-list', data.transports.go, 'go');
+  renderSettingsList('settings-return-list', data.transports.return, 'return');
+  renderCategorySelects(data);
+
+  // GAS URL
+  document.getElementById('gasUrl').value = data.gasUrl || '';
+  updateConnectionStatus(data);
+}
+
+function renderCategorySelects(data) {
+  const cats = data.categories || [];
+  ['go', 'return'].forEach(dir => {
+    const sel = document.getElementById(`add-${dir}-category`);
+    sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('')
+      + '<option value="__new__">＋ 新規カテゴリ</option>';
+  });
+}
+
+function renderSettingsList(containerId, items, direction) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map(item => `
+    <div class="setting-item">
+      <span style="font-size:0.75rem;color:var(--text-light);min-width:80px;">[${item.category || 'その他'}]</span>
+      <span class="name">${item.name}</span>
+      <span class="price">¥${item.price.toLocaleString()}</span>
+      <button class="btn btn-outline btn-sm" onclick="editTransport('${direction}','${item.id}')">✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="removeTransport('${direction}','${item.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function addTransport(direction) {
+  const nameInput = document.getElementById(`add-${direction}-name`);
+  const priceInput = document.getElementById(`add-${direction}-price`);
+  const catSelect = document.getElementById(`add-${direction}-category`);
+  const name = nameInput.value.trim();
+  const price = parseInt(priceInput.value);
+  let category = catSelect.value;
+  if (category === '__new__') {
+    category = prompt('新しいカテゴリ名を入力');
+    if (!category || !category.trim()) return;
+    category = category.trim();
+    const data = getAppData();
+    if (!data.categories.includes(category)) {
+      data.categories.push(category);
+      saveAppData(data);
+    }
+  }
+  if (!name || isNaN(price) || price <= 0) {
+    showToast('名称と金額を正しく入力してください');
+    return;
+  }
+  const data = getAppData();
+  const id = direction[0] + Date.now();
+  data.transports[direction].push({ id, name, price, category });
+  saveAppData(data);
+  nameInput.value = '';
+  priceInput.value = '';
+  renderSettings();
+  renderTransportOptions();
+  showToast('✅ 追加しました');
+  autoSync();
+}
+
+function removeTransport(direction, id) {
+  if (!confirm('この交通手段を削除しますか？')) return;
+  const data = getAppData();
+  data.transports[direction] = data.transports[direction].filter(t => t.id !== id);
+  saveAppData(data);
+  renderSettings();
+  renderTransportOptions();
+  showToast('🗑 削除しました');
+  autoSync();
+}
+
+function editTransport(direction, id) {
+  const data = getAppData();
+  const item = data.transports[direction].find(t => t.id === id);
+  if (!item) return;
+  const newName = prompt('名称を入力', item.name);
+  if (newName === null) return;
+  const newPrice = prompt('金額を入力', item.price);
+  if (newPrice === null) return;
+  item.name = newName.trim() || item.name;
+  item.price = parseInt(newPrice) || item.price;
+  saveAppData(data);
+  renderSettings();
+  renderTransportOptions();
+  showToast('✅ 更新しました');
+  autoSync();
+}
+
+// ==================== スプレッドシート連携 ====================
+function saveGasUrl() {
+  const data = getAppData();
+  data.gasUrl = document.getElementById('gasUrl').value.trim();
+  saveAppData(data);
+  updateConnectionStatus(data);
+  showToast('✅ URL を保存しました');
+}
+
+function updateConnectionStatus(data) {
+  const el = document.getElementById('connection-info');
+  if (data.gasUrl) {
+    el.innerHTML = `<div class="connection-status connected">
+      <span class="status-dot on"></span> スプレッドシート連携: 設定済み
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="connection-status disconnected">
+      <span class="status-dot off"></span> スプレッドシート連携: 未設定
+    </div>`;
+  }
+}
+
+// 自動同期（バックグラウンドで静かに実行）
+async function autoSync() {
+  const data = getAppData();
+  if (!data.gasUrl) return; // URL未設定なら何もしない
+  try {
+    const rows = buildSyncRows(data);
+    await fetch(data.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sync', rows, transports: data.transports })
+    });
+  } catch (e) {
+    console.warn('自動同期エラー:', e);
+  }
+}
+
+// 同期用データ行を生成
+function buildSyncRows(data) {
+  const rows = [];
+  const sortedDates = Object.keys(data.records).sort();
+  sortedDates.forEach(date => {
+    const record = data.records[date];
+    (record.go || []).forEach(id => {
+      const t = data.transports.go.find(x => x.id === id);
+      if (t) rows.push({ date, direction: '行き', name: t.name, price: t.price });
+    });
+    (record.return || []).forEach(id => {
+      const t = data.transports.return.find(x => x.id === id);
+      if (t) rows.push({ date, direction: '帰り', name: t.name, price: t.price });
+    });
+  });
+  return rows;
+}
+
+async function syncToSheet() {
+  const data = getAppData();
+  if (!data.gasUrl) {
+    showToast('⚠️ 設定画面でスプレッドシートURLを設定してください');
+    return;
+  }
+
+  showToast('📤 同期中...');
+
+  const rows = buildSyncRows(data);
+
+  try {
+    const resp = await fetch(data.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sync', rows, transports: data.transports })
+    });
+    const result = await resp.json();
+    if (result.status === 'ok') {
+      showToast('✅ スプレッドシートに同期しました');
+    } else {
+      showToast('❌ エラー: ' + (result.message || '不明'));
+    }
+  } catch (e) {
+    showToast('❌ 通信エラー: ' + e.message);
+  }
+}
+
+// ==================== データ入出力 ====================
+function exportData() {
+  const data = getAppData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transport_data_${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 エクスポートしました');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported.transports && imported.records) {
+        saveAppData(imported);
+        renderTransportOptions();
+        loadDateRecord();
+        showToast('✅ インポートしました');
+      } else {
+        showToast('❌ 不正なデータ形式です');
+      }
+    } catch(err) {
+      showToast('❌ ファイルの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ==================== トースト ====================
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ==================== スプレッドシートからマスタ読込 ====================
+async function loadFromSheet() {
+  const data = getAppData();
+  if (!data.gasUrl) return;
+
+  try {
+    const resp = await fetch(data.gasUrl + '?action=loadMaster');
+    const result = await resp.json();
+
+    if (result.status === 'ok' && result.transports) {
+      const sheetGo = result.transports.go || [];
+      const sheetReturn = result.transports.return || [];
+
+      if (sheetGo.length === 0 && sheetReturn.length === 0) {
+        // シートが空 → 初期値を書き込む
+        showToast('📤 初期データをスプレッドシートに登録中...');
+        await fetch(data.gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'syncMaster', transports: data.transports, categories: data.categories })
+        });
+        showToast('✅ 初期データを登録しました');
+      } else {
+        // シートにデータあり → アプリに反映
+        data.transports.go = sheetGo;
+        data.transports.return = sheetReturn;
+        if (result.categories && result.categories.length > 0) {
+          data.categories = result.categories;
+        }
+        saveAppData(data);
+        renderTransportOptions();
+        loadDateRecord();
+        showToast('✅ スプレッドシートから交通手段を読み込みました');
+      }
+    }
+  } catch (e) {
+    console.warn('スプレッドシート読込エラー:', e);
+  }
+}
+
+// ==================== 初期化 ====================
+window.addEventListener('DOMContentLoaded', () => {
+  setToday();
+  renderTransportOptions();
+  loadDateRecord();
+  // スプレッドシートから最新の交通手段マスタを読み込む
+  loadFromSheet();
+});
+</script>
+</body>
+</html>
