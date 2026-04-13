@@ -281,7 +281,10 @@
     <div class="card">
       <h2>日付を選択</h2>
       <div class="date-section">
-        <input type="date" id="selectedDate" onchange="loadDateRecord()">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="date" id="selectedDate" onchange="loadDateRecord()">
+          <span id="selectedDayOfWeek" style="font-size:1.1rem;font-weight:700;min-width:3em;"></span>
+        </div>
         <div class="date-nav">
           <button onclick="moveDate(-1)">◀ 前日</button>
           <button onclick="setToday()">今日</button>
@@ -535,8 +538,20 @@ function updateDailySummary() {
   `;
 }
 
+function updateDayOfWeek() {
+  const date = document.getElementById('selectedDate').value;
+  const el = document.getElementById('selectedDayOfWeek');
+  if (!date || !el) { if (el) el.textContent = ''; return; }
+  const d = new Date(date);
+  const days = ['日','月','火','水','木','金','土'];
+  const colors = ['#dc2626','#1e293b','#1e293b','#1e293b','#1e293b','#1e293b','#2563eb'];
+  el.textContent = `（${days[d.getDay()]}）`;
+  el.style.color = colors[d.getDay()];
+}
+
 function loadDateRecord() {
   const date = document.getElementById('selectedDate').value;
+  updateDayOfWeek();
   if (!date) return;
   const data = getAppData();
   const record = data.records[date];
