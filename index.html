@@ -281,9 +281,15 @@
     <div class="card">
       <h2>日付を選択</h2>
       <div class="date-section">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <input type="date" id="selectedDate" onchange="loadDateRecord()">
-          <span id="selectedDayOfWeek" style="font-size:1.1rem;font-weight:700;min-width:3em;"></span>
+        <input type="date" id="selectedDate" onchange="loadDateRecord()" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;">
+        <div id="dateDisplay" onclick="document.getElementById('selectedDate').showPicker()" style="
+          padding:10px 16px; border:1px solid var(--border); border-radius:8px;
+          font-size:1.15rem; font-weight:600; cursor:pointer; background:var(--card);
+          display:flex; align-items:center; gap:6px; user-select:none;
+          transition: border-color 0.2s;
+        ">
+          <span>📅</span>
+          <span id="dateDisplayText">読み込み中...</span>
         </div>
         <div class="date-nav">
           <button onclick="moveDate(-1)">◀ 前日</button>
@@ -538,20 +544,20 @@ function updateDailySummary() {
   `;
 }
 
-function updateDayOfWeek() {
+function updateDateDisplay() {
   const date = document.getElementById('selectedDate').value;
-  const el = document.getElementById('selectedDayOfWeek');
-  if (!date || !el) { if (el) el.textContent = ''; return; }
+  const el = document.getElementById('dateDisplayText');
+  if (!date || !el) return;
   const d = new Date(date);
   const days = ['日','月','火','水','木','金','土'];
-  const colors = ['#dc2626','#1e293b','#1e293b','#1e293b','#1e293b','#1e293b','#2563eb'];
-  el.textContent = `（${days[d.getDay()]}）`;
-  el.style.color = colors[d.getDay()];
+  const dayColors = ['#dc2626','#1e293b','#1e293b','#1e293b','#1e293b','#1e293b','#2563eb'];
+  const dayIdx = d.getDay();
+  el.innerHTML = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}<span style="color:${dayColors[dayIdx]};margin-left:4px;">（${days[dayIdx]}）</span>`;
 }
 
 function loadDateRecord() {
   const date = document.getElementById('selectedDate').value;
-  updateDayOfWeek();
+  updateDateDisplay();
   if (!date) return;
   const data = getAppData();
   const record = data.records[date];
