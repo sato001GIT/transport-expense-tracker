@@ -283,10 +283,10 @@
       <div class="date-section">
         <input type="date" id="selectedDate" onchange="loadDateRecord()" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;">
         <div id="dateDisplay" onclick="document.getElementById('selectedDate').showPicker()" style="
-          padding:10px 16px; border:1px solid var(--primary); border-radius:8px;
-          font-size:1.15rem; font-weight:600; cursor:pointer; background:var(--primary-light);
+          padding:10px 16px; border:1px solid var(--border); border-radius:8px;
+          font-size:1.15rem; font-weight:600; cursor:pointer; background:var(--card);
           display:flex; align-items:center; gap:6px; user-select:none;
-          transition: border-color 0.2s; color:var(--primary);
+          transition: border-color 0.2s;
         ">
           <span>📅</span>
           <span id="dateDisplayText">読み込み中...</span>
@@ -544,15 +544,93 @@ function updateDailySummary() {
   `;
 }
 
+// 日本の祝日判定
+function getJapaneseHolidays(year) {
+  const holidays = {};
+  const add = (m, d, name) => { holidays[`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`] = name; };
+  // ハッピーマンデー: 第n月曜日を求める
+  const nthMonday = (m, n) => {
+    const first = new Date(year, m - 1, 1);
+    const firstMon = (8 - first.getDay()) % 7 || 7;
+    return firstMon + (n - 1) * 7;
+  };
+
+  add(1, 1, '元日');
+  add(1, nthMonday(1, 2), '成人の日');
+  add(2, 11, '建国記念の日');
+  add(2, 23, '天皇誕生日');
+  // 春分の日（概算）
+  const shunbun = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  add(3, shunbun, '春分の日');
+  add(4, 29, '昭和の日');
+  add(5, 3, '憲法記念日');
+  add(5, 4, 'みどりの日');
+  add(5, 5, 'こどもの日');
+  add(7, nthMonday(7, 3), '海の日');
+  add(8, 11, '山の日');
+  add(9, nthMonday(9, 3), '敬老の日');
+  // 秋分の日（概算）
+  const shubun = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  add(9, shubun, '秋分の日');
+  add(10, nthMonday(10, 2), 'スポーツの日');
+  add(11, 3, '文化の日');
+  add(11, 23, '勤労感謝の日');
+
+  // 振替休日: 祝日が日曜なら翌月曜
+  const keys = Object.keys(holidays).sort();
+  keys.forEach(key => {
+    const d = new Date(key);
+    if (d.getDay() === 0) {
+      let next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      let nextKey = formatDate(next);
+      while (holidays[nextKey]) { next.setDate(next.getDate() + 1); nextKey = formatDate(next); }
+      holidays[nextKey] = '振替休日';
+    }
+  });
+
+  // 国民の休日: 祝日に挟まれた平日
+  const sortedKeys = Object.keys(holidays).sort();
+  for (let i = 0; i < sortedKeys.length - 1; i++) {
+    const d1 = new Date(sortedKeys[i]);
+    const d2 = new Date(sortedKeys[i + 1]);
+    const diff = (d2 - d1) / 86400000;
+    if (diff === 2) {
+      const between = new Date(d1);
+      between.setDate(between.getDate() + 1);
+      const bKey = formatDate(between);
+      if (!holidays[bKey] && between.getDay() !== 0) {
+        holidays[bKey] = '国民の休日';
+      }
+    }
+  }
+
+  return holidays;
+}
+
+// 祝日キャッシュ
+const _holidayCache = {};
+function isHoliday(dateStr) {
+  const year = parseInt(dateStr.substring(0, 4));
+  if (!_holidayCache[year]) _holidayCache[year] = getJapaneseHolidays(year);
+  return _holidayCache[year][dateStr] || null;
+}
+
 function updateDateDisplay() {
   const date = document.getElementById('selectedDate').value;
   const el = document.getElementById('dateDisplayText');
   if (!date || !el) return;
   const d = new Date(date);
   const days = ['日','月','火','水','木','金','土'];
-  const dayColors = ['#dc2626','#1e293b','#1e293b','#1e293b','#1e293b','#1e293b','#2563eb'];
   const dayIdx = d.getDay();
-  el.innerHTML = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}<span style="color:${dayColors[dayIdx]};margin-left:4px;">（${days[dayIdx]}）</span>`;
+  const holiday = isHoliday(date);
+
+  let color = '#1e293b'; // 平日: 黒
+  if (holiday || dayIdx === 0) color = '#dc2626'; // 日曜・祝日: 赤
+  else if (dayIdx === 6) color = '#2563eb'; // 土曜: 青
+
+  const holidayLabel = holiday ? `<span style="font-size:0.8rem;margin-left:6px;">${holiday}</span>` : '';
+  el.innerHTML = `<span style="color:${color}">${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${days[dayIdx]}）${holidayLabel}</span>`;
 }
 
 function loadDateRecord() {
