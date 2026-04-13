@@ -264,9 +264,7 @@
 
 <div class="header">
   <h1>🚃 交通費記録</h1>
-  <div class="header-actions">
-    <button onclick="syncToSheet()" title="スプレッドシートに同期">📤 同期</button>
-  </div>
+  <div class="header-actions"></div>
 </div>
 
 <div class="tabs">
@@ -346,21 +344,6 @@
 
   <!-- ===== 設定パネル ===== -->
   <div id="panel-settings" class="panel">
-    <div class="card">
-      <h2>スプレッドシート連携</h2>
-      <div id="connection-info"></div>
-      <div class="form-group" style="margin-top:12px">
-        <label style="font-size:0.85rem;color:var(--text-light);margin-bottom:4px;display:block;">
-          Google Apps Script URL
-        </label>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxx/exec"
-            style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;">
-          <button class="btn btn-primary btn-sm" onclick="saveGasUrl()">保存</button>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <h2>🚶 行きの交通手段</h2>
       <div id="settings-go-list"></div>
