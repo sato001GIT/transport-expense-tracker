@@ -1061,73 +1061,141 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-// ==================== スプレッドシートからマスタ読込 ====================
+// ==================== マルチデバイス同期 ====================
+
+// スプレッドシートのレコード（名前ベース）をローカル形式（IDベース）に変換
+function convertRemoteRecords(remoteRecords, transports) {
+  const localRecords = {};
+  for (const [date, dirs] of Object.entries(remoteRecords)) {
+    localRecords[date] = { go: [], return: [] };
+    (dirs.go || []).forEach(entry => {
+      const t = transports.go.find(x => x.name === entry.name);
+      if (t) localRecords[date].go.push(t.id);
+    });
+    (dirs.return || []).forEach(entry => {
+      const t = transports.return.find(x => x.name === entry.name);
+      if (t) localRecords[date].return.push(t.id);
+    });
+  }
+  return localRecords;
+}
+
+// ローカルとリモートのレコードをマージ（両方の記録を保持、重複除去）
+function mergeRecords(localRecords, remoteRecords) {
+  const merged = {};
+  const allDates = new Set([...Object.keys(localRecords), ...Object.keys(remoteRecords)]);
+
+  for (const date of allDates) {
+    const local = localRecords[date] || { go: [], return: [] };
+    const remote = remoteRecords[date] || { go: [], return: [] };
+    merged[date] = {
+      go: [...new Set([...(local.go || []), ...(remote.go || [])])],
+      return: [...new Set([...(local.return || []), ...(remote.return || [])])]
+    };
+    // 空レコードは除外
+    if (merged[date].go.length === 0 && merged[date].return.length === 0) {
+      delete merged[date];
+    }
+  }
+  return merged;
+}
+
+// 起動時: マスタ＋レコードを読み込み、ローカルとマージ
 async function loadFromSheet() {
   const data = getAppData();
   if (!data.gasUrl) return;
 
   try {
-    const resp = await fetch(data.gasUrl + '?action=loadMaster');
+    // マスタとレコードを両方読み込む
+    const resp = await fetch(data.gasUrl + '?action=load');
     const result = await resp.json();
 
-    if (result.status === 'ok' && result.transports) {
-      const sheetGo = result.transports.go || [];
-      const sheetReturn = result.transports.return || [];
+    if (result.status !== 'ok') return;
 
-      if (sheetGo.length === 0 && sheetReturn.length === 0) {
-        // シートが空 → 初期値を書き込む
-        showToast('📤 初期データをスプレッドシートに登録中...');
-        await fetch(data.gasUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ action: 'syncMaster', transports: data.transports, categories: data.categories })
-        });
-        showToast('✅ 初期データを登録しました');
-      } else {
-        // シートにデータあり → アプリに反映
-        data.transports.go = sheetGo;
-        data.transports.return = sheetReturn;
-        if (result.categories && result.categories.length > 0) {
-          data.categories = result.categories;
-        }
-        saveAppData(data);
-        renderTransportOptions();
-        loadDateRecord();
+    const sheetTransports = result.transports || { go: [], return: [] };
+    const sheetGo = sheetTransports.go || [];
+    const sheetReturn = sheetTransports.return || [];
+
+    if (sheetGo.length === 0 && sheetReturn.length === 0) {
+      // シートが空 → ローカルの初期値を書き込む
+      showToast('📤 初期データをスプレッドシートに登録中...');
+      const rows = buildSyncRows(data);
+      await fetch(data.gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'sync', rows, transports: data.transports })
+      });
+      showToast('✅ 初期データを登録しました');
+    } else {
+      // マスタを反映
+      data.transports.go = sheetGo;
+      data.transports.return = sheetReturn;
+      if (result.categories && result.categories.length > 0) {
+        data.categories = result.categories;
       }
+
+      // レコードをマージ（ローカルの既存データを消さない）
+      const remoteRecords = result.records || {};
+      const convertedRemote = convertRemoteRecords(remoteRecords, data.transports);
+      data.records = mergeRecords(data.records, convertedRemote);
+
+      saveAppData(data);
+      renderTransportOptions();
+      loadDateRecord();
+
+      // マージ結果をスプレッドシートに書き戻し（他端末のデータも統合）
+      autoSync();
     }
   } catch (e) {
     console.warn('スプレッドシート読込エラー:', e);
   }
 }
 
-// バックグラウンド同期（変更があった場合のみUI更新）
+// バックグラウンド同期（マスタ＋レコード双方向同期）
 async function backgroundSync() {
   const data = getAppData();
   if (!data.gasUrl) return;
 
   try {
-    const resp = await fetch(data.gasUrl + '?action=loadMaster');
+    const resp = await fetch(data.gasUrl + '?action=load');
     const result = await resp.json();
 
-    if (result.status === 'ok' && result.transports) {
-      const sheetGo = result.transports.go || [];
-      const sheetReturn = result.transports.return || [];
+    if (result.status !== 'ok') return;
 
-      // 変更があるかチェック
-      const currentJson = JSON.stringify(data.transports);
-      const newTransports = { go: sheetGo, return: sheetReturn };
-      const newJson = JSON.stringify(newTransports);
+    let changed = false;
 
-      if (currentJson !== newJson) {
-        data.transports = newTransports;
-        if (result.categories && result.categories.length > 0) {
-          data.categories = result.categories;
-        }
-        saveAppData(data);
-        renderTransportOptions();
-        loadDateRecord();
-        showToast('🔄 スプレッドシートの変更を反映しました');
+    // マスタの変更チェック
+    const sheetTransports = result.transports || { go: [], return: [] };
+    const currentTransJson = JSON.stringify(data.transports);
+    const newTransJson = JSON.stringify(sheetTransports);
+
+    if (currentTransJson !== newTransJson && (sheetTransports.go || []).length > 0) {
+      data.transports = sheetTransports;
+      if (result.categories && result.categories.length > 0) {
+        data.categories = result.categories;
       }
+      changed = true;
+    }
+
+    // レコードのマージ
+    const remoteRecords = result.records || {};
+    const convertedRemote = convertRemoteRecords(remoteRecords, data.transports);
+    const mergedRecords = mergeRecords(data.records, convertedRemote);
+    const currentRecJson = JSON.stringify(data.records);
+    const mergedRecJson = JSON.stringify(mergedRecords);
+
+    if (currentRecJson !== mergedRecJson) {
+      data.records = mergedRecords;
+      changed = true;
+    }
+
+    if (changed) {
+      saveAppData(data);
+      renderTransportOptions();
+      loadDateRecord();
+      showToast('🔄 他の端末の変更を反映しました');
+      // マージ結果をスプレッドシートにも書き戻し
+      autoSync();
     }
   } catch (e) {
     // サイレントに失敗

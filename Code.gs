@@ -215,15 +215,18 @@ function loadData() {
   }
 
   const transports = { go: [], return: [] };
+  const categoriesSet = {};
   const masterData = masterSheet.getDataRange().getValues();
   for (let i = 1; i < masterData.length; i++) {
     const [dir, id, name, price, category] = masterData[i];
     if (!dir) continue;
     const key = dir === '行き' ? 'go' : 'return';
-    transports[key].push({ id, name, price, category: category || 'その他' });
+    const cat = category || 'その他';
+    transports[key].push({ id, name, price, category: cat });
+    categoriesSet[cat] = true;
   }
 
-  return jsonResponse({ status: 'ok', records, transports });
+  return jsonResponse({ status: 'ok', records, transports, categories: Object.keys(categoriesSet) });
 }
 
 // JSON レスポンス
