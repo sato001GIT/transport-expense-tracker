@@ -845,8 +845,9 @@ function renderSettings() {
   renderSettingsList('settings-return-list', data.transports.return, 'return');
   renderCategorySelects(data);
 
-  // GAS URL
-  document.getElementById('gasUrl').value = data.gasUrl || '';
+  // GAS URL（要素がある場合のみ）
+  const gasUrlEl = document.getElementById('gasUrl');
+  if (gasUrlEl) gasUrlEl.value = data.gasUrl || '';
   updateConnectionStatus(data);
 }
 
@@ -944,6 +945,7 @@ function saveGasUrl() {
 
 function updateConnectionStatus(data) {
   const el = document.getElementById('connection-info');
+  if (!el) return;
   if (data.gasUrl) {
     el.innerHTML = `<div class="connection-status connected">
       <span class="status-dot on"></span> スプレッドシート連携: 設定済み
