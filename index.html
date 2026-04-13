@@ -400,6 +400,7 @@
 <script>
 // ==================== データ管理 ====================
 const STORAGE_KEY = 'transportApp';
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwsG42fvAvtvArTqPmGW9FYq5szXcCU-g6bHmSELQrJE78d_CDgoHbwgP3gisMctWpr/exec';
 
 function getAppData() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -407,6 +408,8 @@ function getAppData() {
     const parsed = JSON.parse(raw);
     // 既存データにcategoryがなければ付与
     migrateCategories(parsed);
+    // GAS URLが未設定ならデフォルトを適用
+    if (!parsed.gasUrl) parsed.gasUrl = DEFAULT_GAS_URL;
     return parsed;
   }
   return {
@@ -426,7 +429,7 @@ function getAppData() {
       ]
     },
     records: {},
-    gasUrl: ''
+    gasUrl: DEFAULT_GAS_URL
   };
 }
 
