@@ -76,10 +76,10 @@
   }
   .date-nav { display: flex; gap: 4px; }
   .date-nav button {
-    padding: 6px 12px; border: 1px solid var(--primary); background: var(--primary-light);
-    border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--primary); font-weight: 500;
+    padding: 6px 12px; border: 1px solid var(--border); background: var(--card);
+    border-radius: 6px; cursor: pointer; font-size: 0.85rem;
   }
-  .date-nav button:hover { background: var(--primary); color: #fff; }
+  .date-nav button:hover { background: var(--primary-light); }
 
   /* Checkbox group */
   .transport-group { margin-bottom: 16px; }
@@ -283,10 +283,10 @@
       <div class="date-section">
         <input type="date" id="selectedDate" onchange="loadDateRecord()" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;">
         <div id="dateDisplay" onclick="document.getElementById('selectedDate').showPicker()" style="
-          padding:10px 16px; border:1px solid var(--border); border-radius:8px;
-          font-size:1.15rem; font-weight:600; cursor:pointer; background:var(--card);
+          padding:10px 16px; border:1px solid var(--primary); border-radius:8px;
+          font-size:1.15rem; font-weight:600; cursor:pointer; background:var(--primary-light);
           display:flex; align-items:center; gap:6px; user-select:none;
-          transition: border-color 0.2s;
+          transition: border-color 0.2s; color:var(--primary);
         ">
           <span>📅</span>
           <span id="dateDisplayText">読み込み中...</span>
@@ -316,7 +316,7 @@
 
     <div class="btn-group" style="justify-content:space-between;">
       <button class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#e2e8f0;font-weight:400;font-size:0.75rem;padding:6px 10px;flex:none;" onclick="deleteRecord()">🗑 削除</button>
-      <button class="btn btn-primary" style="flex:none;padding:12px 32px;font-size:1rem;" onclick="saveRecord()">💾 保存</button>
+      <button class="btn btn-primary" style="flex:1;padding:12px 32px;font-size:1rem;max-width:70%;" onclick="saveRecord()">💾 保存</button>
     </div>
   </div>
 
