@@ -1093,11 +1093,44 @@ async function loadFromSheet() {
         saveAppData(data);
         renderTransportOptions();
         loadDateRecord();
-        showToast('✅ スプレッドシートから交通手段を読み込みました');
       }
     }
   } catch (e) {
     console.warn('スプレッドシート読込エラー:', e);
+  }
+}
+
+// バックグラウンド同期（変更があった場合のみUI更新）
+async function backgroundSync() {
+  const data = getAppData();
+  if (!data.gasUrl) return;
+
+  try {
+    const resp = await fetch(data.gasUrl + '?action=loadMaster');
+    const result = await resp.json();
+
+    if (result.status === 'ok' && result.transports) {
+      const sheetGo = result.transports.go || [];
+      const sheetReturn = result.transports.return || [];
+
+      // 変更があるかチェック
+      const currentJson = JSON.stringify(data.transports);
+      const newTransports = { go: sheetGo, return: sheetReturn };
+      const newJson = JSON.stringify(newTransports);
+
+      if (currentJson !== newJson) {
+        data.transports = newTransports;
+        if (result.categories && result.categories.length > 0) {
+          data.categories = result.categories;
+        }
+        saveAppData(data);
+        renderTransportOptions();
+        loadDateRecord();
+        showToast('🔄 スプレッドシートの変更を反映しました');
+      }
+    }
+  } catch (e) {
+    // サイレントに失敗
   }
 }
 
@@ -1106,8 +1139,10 @@ window.addEventListener('DOMContentLoaded', () => {
   setToday();
   renderTransportOptions();
   loadDateRecord();
-  // スプレッドシートから最新の交通手段マスタを読み込む
+  // 起動時にスプレッドシートから読み込む
   loadFromSheet();
+  // 30秒ごとにスプレッドシートの変更を確認
+  setInterval(backgroundSync, 30000);
 });
 </script>
 </body>
